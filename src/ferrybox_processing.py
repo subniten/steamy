@@ -9,7 +9,7 @@ import matplotlib.dates as mdates
 import matplotlib.pyplot as pyplot
 import numpy
 import pandas
-import pygeos
+
 import xarray
 
 
