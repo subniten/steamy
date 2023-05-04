@@ -222,6 +222,12 @@ if ctd_positions_file.exists():
         ax_temperature.axvline(
             distance, color='tab:grey'
         )
+    ax_temperature_time = res[1]['ax_temp']
+    for time, sn in zip(station_data.time.values, station_data.station_name.values):
+        ax_temperature_time.annotate(sn.split('_')[-1], xy=(time, 1.05), xycoords=('data', 'axes fraction'))
+        ax_temperature_time.axvline(
+            time, color='tab:grey'
+        )
 
 
 # %%
