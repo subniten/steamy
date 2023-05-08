@@ -291,5 +291,5 @@ pyplot.colorbar(img)
 ax.set_xlim((10, 11.94780225))
 ax.set_ylim((57.3, 58.5))
 
-if ctd_positions_file.exists():
+if ctd_positions_file.exists() and len(station_data.latitude) > 0:
     station_data.plot.scatter(x='longitude', y='latitude', s=9, marker='+', c='tab:red')
