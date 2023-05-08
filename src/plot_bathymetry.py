@@ -1,3 +1,4 @@
+# %%
 import pathlib
 
 import matplotlib.pyplot as pyplot
