@@ -32,10 +32,9 @@ ferry_file_path = ferry_directory / '125_2023-05-05_09.06.10_Skagen_to_Nya_varve
 
 
 # This is optional. Set to None if you don't have it or want to use it.
-ctd_positions_file = None
-# ctd_positions_file = pathlib.Path(
-#     '/Volumes/Rayleigh/cruise-oc4920/data/ctd_positions_04.tsv'
-# )
+ctd_positions_file = pathlib.Path(
+    '/Volumes/Rayleigh/cruise-oc4920/data/ctd_positions_04.tsv'
+)
 ctd_begin_time = numpy.datetime64(datetime.datetime(2023, 5, 4, 8, 0))
 
 
@@ -76,8 +75,9 @@ data = data.assign_coords(dict(
     )
 )
 
-bathy = xarray.open_dataarray(bathymetry_file)
-bathy.name = 'bathymetry'
+if bathymetry_file.exists():
+    bathy = xarray.open_dataarray(bathymetry_file)
+    bathy.name = 'bathymetry'
 
 
 # %%
@@ -285,7 +285,8 @@ if ctd_positions_file.exists():
 fig = pyplot.figure(figsize=(16, 10))
 ax = fig.add_subplot(1, 1, 1, projection=ccrs.PlateCarree(central_longitude=11.))
 img = data.plot.scatter(x='longitude', y='latitude', c=data.Salinity_SBE45, cmap=cmap.haline, ax=ax, s=2, ec=None)
-bathy.plot.contour(x='lon', y='lat', ax=ax, levels=numpy.linspace(-500., 0, 21), linewidths=0.7, colors='tab:grey')
+if bathymetry_file.exists():
+    bathy.plot.contour(x='lon', y='lat', ax=ax, levels=numpy.linspace(-500., 0, 21), linewidths=0.7, colors='tab:grey')
 pyplot.colorbar(img)
 ax.set_xlim((10, 11.94780225))
 ax.set_ylim((57.3, 58.5))
