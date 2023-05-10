@@ -53,4 +53,4 @@ bathymetry.plot.contour(ax=ax, levels=isobaths, linewidths=0.7, colors='tab:grey
 ax.set_xlabel('˚E')
 ax.set_ylabel('˚N')
 
-bathymetry.to_netcdf(data_root_directory / 'bathymetry' / 'steamy_bathymetry.nc')
+# bathymetry.to_netcdf(data_root_directory / 'bathymetry' / 'steamy_bathymetry.nc')

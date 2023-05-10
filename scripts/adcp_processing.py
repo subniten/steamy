@@ -4,6 +4,12 @@ import numpy
 
 import steamy_utilities
 
+# For this to work, make sure steamy_utils directory is in your PYTHONPATH
+#  i) notebook userds
+#      start your notebook in a directory containing steamy_utilities directory by
+#      PYTHONPATH=`pwd` jupyterlab-lab
+# ii) python/ipython users
+#      PYTHONPATH=`pwd` ipython --pylab
 steamy_utilities.set_steamy_data_root_path(
     '/Volumes/Rayleigh/cruise-oc4920/steamy_data'
 )
