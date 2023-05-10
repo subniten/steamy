@@ -115,7 +115,7 @@ img = tsg_data.plot.scatter(
     s=10,
     ec=None,
     vmin=29.5,
-    vmax=35.,
+    vmax=35.0,
 )
 bathy.plot.contour(
     x='lon',
@@ -129,4 +129,6 @@ pyplot.colorbar(img)
 ax.set_xlim((10, 11.94780225))
 ax.set_ylim((57.3, 58.5))
 
-station_data.plot.scatter(x='longitude', y='latitude', s=4, marker='+', c='tab:red', alpha=0.6)
+station_data.plot.scatter(
+    x='longitude', y='latitude', s=4, marker='+', c='tab:red', alpha=0.6
+)

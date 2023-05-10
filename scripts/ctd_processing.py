@@ -13,7 +13,7 @@ import xarray
 #      start your notebook in a directory containing steamy_utilities directory by
 #      PYTHONPATH=`pwd` jupyterlab-lab
 # ii) python/ipython users
-#      PYTHONPATH=`pwd` ipython --pylab 
+#      PYTHONPATH=`pwd` ipython --pylab
 import steamy_utilities
 
 
@@ -83,8 +83,8 @@ for ct, sa, sigma, lbl in zip(
 
 axes[0].set_ylim((0, 100))
 axes[0].invert_yaxis()
-axes[0].set_xlim((6., 10.))
-axes[1].set_xlim((29.5, 35.))
+axes[0].set_xlim((6.0, 10.0))
+axes[1].set_xlim((29.5, 35.0))
 axes[2].set_xlim((22.5, 27.5))
 
 axes[0].legend()
@@ -108,8 +108,8 @@ for ct, sa, sigma, lbl in zip(
     sigma.plot(ax=axes[2], y='depth', label=lbl)
     axes[0].set_ylim((0, 100))
     axes[0].invert_yaxis()
-    axes[0].set_xlim((6., 10.))
-    axes[1].set_xlim((29.5, 35.))
+    axes[0].set_xlim((6.0, 10.0))
+    axes[1].set_xlim((29.5, 35.0))
     axes[2].set_xlim((22.5, 27.5))
     for ax, title in zip(fig.axes[:3], ['$\\Theta$', 'S$_A$', '$\\sigma_0$']):
         ax.legend()

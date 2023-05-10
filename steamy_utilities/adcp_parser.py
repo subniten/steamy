@@ -13,6 +13,7 @@ from .steamy_common import cumulative_distance
 
 _nan_int_value = -32768
 
+
 def read_adcp_file(adcp_file_path):
     def _adcp_int_to_floats(mat_array):
         indices = mat_array == _nan_int_value
@@ -61,18 +62,24 @@ def read_adcp_file(adcp_file_path):
     positions = dict(
         latitude=xarray.DataArray(
             _adcp_int_to_floats(data['AnFLatDeg']).T[0], **time_1d_kwargs
-        ), 
+        ),
         longitude=xarray.DataArray(
             _adcp_int_to_floats(data['AnFLonDeg']).T[0], **time_1d_kwargs
-        )
+        ),
     )
     distance = xarray.DataArray(
-        cumulative_distance(xarray.Dataset(positions), latitude_name='latitude', longitude_name='longitude'), attrs=dict(units='km'), **time_1d_kwargs
+        cumulative_distance(
+            xarray.Dataset(positions),
+            latitude_name='latitude',
+            longitude_name='longitude',
+        ),
+        attrs=dict(units='km'),
+        **time_1d_kwargs,
     )
 
     time_depth_kwargs = dict(
         coords=dict(time=time_stamps, depth=depth_bins, distance=distance),
-        dims=['time', 'depth']
+        dims=['time', 'depth'],
     )
     vel_attrs = dict(units='m·s$^{-1}$')
     zonal_velocities = xarray.DataArray(

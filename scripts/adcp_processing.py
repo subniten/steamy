@@ -19,7 +19,7 @@ _figsize = steamy_utilities.figsize
 adcp_data = steamy_utilities.read_adcp_file(adcp_file)
 
 # Plot velocity contours as fucntion of distance and depth
-current_velocities_levels = numpy.linspace(-.5, .5, 11)
+current_velocities_levels = numpy.linspace(-0.5, 0.5, 11)
 
 
 fig, axes = pyplot.subplots(1, 2, figsize=_figsize, sharex='all', sharey='all')
@@ -41,10 +41,22 @@ bathymetry = steamy_utilities.load_bathymetry(steamy_utilities.get_bathymetry_fi
 depth_level = 10
 fig, ax2 = pyplot.subplots(1, 1, figsize=_figsize)
 bathymetry.plot.contour(ax=ax2, x='lon', y='lat', levels=[0], colors='grey')
-bathymetry.plot.contour(ax=ax2, x='lon', y='lat', levels=numpy.arange(-500, 0, 20), colors='grey', linewidths=0.7)
+bathymetry.plot.contour(
+    ax=ax2,
+    x='lon',
+    y='lat',
+    levels=numpy.arange(-500, 0, 20),
+    colors='grey',
+    linewidths=0.7,
+)
 
 img_quiv = ax2.quiver(
-    adcp_data.longitude, adcp_data.latitude, adcp_data.u[:, depth_level], adcp_data.v[:, depth_level], scale=35, width=0.002
+    adcp_data.longitude,
+    adcp_data.latitude,
+    adcp_data.u[:, depth_level],
+    adcp_data.v[:, depth_level],
+    scale=35,
+    width=0.002,
 )
 ax2.quiverkey(img_quiv, 0.9, 0.9, 1, '1 ms$^{-1}$', coordinates='axes')
 
@@ -66,9 +78,18 @@ Vmean = adcp_data.v.mean(dim='depth')
 
 fig, ax3 = pyplot.subplots(1, 1, figsize=(8, 6))
 bathymetry.plot.contour(ax=ax3, x='lon', y='lat', levels=[0], colors='grey')
-bathymetry.plot.contour(ax=ax3, x='lon', y='lat', levels=numpy.arange(-500, 0, 20), colors='grey', linewidths=0.7)
+bathymetry.plot.contour(
+    ax=ax3,
+    x='lon',
+    y='lat',
+    levels=numpy.arange(-500, 0, 20),
+    colors='grey',
+    linewidths=0.7,
+)
 
-img_quiv_2 = ax3.quiver(adcp_data.longitude, adcp_data.latitude, Umean, Vmean, scale=35, width=0.002)
+img_quiv_2 = ax3.quiver(
+    adcp_data.longitude, adcp_data.latitude, Umean, Vmean, scale=35, width=0.002
+)
 ax3.quiverkey(img_quiv_2, 0.9, 0.9, 1, '1 ms$^{-1}$', coordinates='axes')
 ax3.set_ylim(57.2, 58.5)
 ax3.set_xlim(10.3, 12.3)

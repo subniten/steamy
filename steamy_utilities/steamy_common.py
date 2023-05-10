@@ -62,7 +62,9 @@ def _initalise_sub_directories():
         _steamy_paths['bathymetry_directory'] = root_path / 'bathymetry'
         _steamy_paths['ctd_directory'] = root_path / 'steamy_ctd_data'
         _steamy_paths['ferrybox_directory'] = root_path / 'tsg'
-        _steamy_paths['adcp_directory'] = root_path / 'steamy_adcp_data/Single Date Files'
+        _steamy_paths['adcp_directory'] = (
+            root_path / 'steamy_adcp_data/Single Date Files'
+        )
 
 
 def cumulative_distance(dataset, latitude_name='Latitude', longitude_name='Longitude'):
