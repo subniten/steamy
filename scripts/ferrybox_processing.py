@@ -4,18 +4,11 @@ import math
 
 import cartopy.crs as ccrs
 import cmocean.cm as cmap
-from geopy.distance import geodesic
 import matplotlib.dates as mdates
 import matplotlib.pyplot as pyplot
 import numpy
 import xarray
 
-# For this to work, make sure steamy_utils directory is in your PYTHONPATH
-#  i) notebook userds
-#      start your notebook in a directory containing steamy_utilities directory by
-#      PYTHONPATH=`pwd` jupyterlab-lab
-# ii) python/ipython users
-#      PYTHONPATH=`pwd` ipython --pylab 
 import steamy_utilities
 
 
