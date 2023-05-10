@@ -32,6 +32,20 @@ def set_steamy_data_root_path(path):
     _initalise_sub_directories()
 
 
+def get_adcp_directory():
+    if 'adcp_directory' in _steamy_paths:
+        return _steamy_paths['adcp_directory']
+
+
+def get_bathymetry_directory():
+    if 'bathymetry_directory' in _steamy_paths:
+        return _steamy_paths['bathymetry_directory']
+
+
+def get_bathymetry_file():
+    return get_bathymetry_directory() / 'steamy_bathymetry.nc'
+
+
 def get_ctd_directory():
     if 'ctd_directory' in _steamy_paths:
         return _steamy_paths['ctd_directory']
@@ -42,21 +56,13 @@ def get_ferrybox_directory():
         return _steamy_paths['ferrybox_directory']
 
 
-def get_bathymetry_directory():
-    if 'bathymetry_directory' in _steamy_paths:
-        return _steamy_paths['bathymetry_directory']
-
-
-def get_bathymetry_file():
-    return get_bathymetry_directory() / 'gebco_2022_n60.0_s54.0_w7.5_e15.0.nc'
-
-
 def _initalise_sub_directories():
     if 'root_path' in _steamy_paths:
         root_path = _steamy_paths['root_path']
         _steamy_paths['bathymetry_directory'] = root_path / 'bathymetry'
         _steamy_paths['ctd_directory'] = root_path / 'steamy_ctd_data'
         _steamy_paths['ferrybox_directory'] = root_path / 'tsg'
+        _steamy_paths['adcp_directory'] = root_path / 'steamy_adcp_data/Single Date Files'
 
 
 def cumulative_distance(dataset, latitude_name='Latitude', longitude_name='Longitude'):
