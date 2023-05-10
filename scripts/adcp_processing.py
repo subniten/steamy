@@ -97,6 +97,7 @@ img_quiv_2 = ax3.quiver(
     adcp_data.longitude, adcp_data.latitude, Umean, Vmean, scale=35, width=0.002
 )
 ax3.quiverkey(img_quiv_2, 0.9, 0.9, 1, '1 ms$^{-1}$', coordinates='axes')
+
 ax3.set_ylim(57.2, 58.5)
 ax3.set_xlim(10.3, 12.3)
 ax3.set(
