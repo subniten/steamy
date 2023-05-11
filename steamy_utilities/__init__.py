@@ -11,6 +11,7 @@ from .steamy_common import (
 )
 from .adcp_parser import (
     read_adcp_file,
+    set_bottom_bin_to_nan,
 )
 from .ctd_parser import (
     read_ctd_files,

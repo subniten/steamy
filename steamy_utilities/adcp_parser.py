@@ -94,15 +94,15 @@ def read_adcp_file(adcp_file_path):
 
     return xarray.Dataset(
         dict(
-            u=_set_bottom_bin_to_nan(zonal_velocities),
-            v=_set_bottom_bin_to_nan(meridional_velocity),
-            w=_set_bottom_bin_to_nan(vertical_velocity),
+            u=zonal_velocities,
+            v=meridional_velocity,
+            w=vertical_velocity,
             **positions,
         )
     )
 
 
-def _set_bottom_bin_to_nan(_velocity):
+def set_bottom_bin_to_nan(_velocity):
     bottom_bin_index = numpy.array(
         [(numpy.sum(~numpy.isnan(_.values)) - 1) for _ in _velocity]
     )
