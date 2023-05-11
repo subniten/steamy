@@ -75,7 +75,6 @@ ax2.set(
 )
 
 pyplot.tight_layout()
-pyplot.show()
 
 
 # Depth averaged currents
