@@ -9,12 +9,6 @@ import matplotlib.pyplot as pyplot
 import numpy
 import xarray
 
-# For this to work, make sure steamy_utils directory is in your PYTHONPATH
-#  i) notebook userds
-#      start your notebook in a directory containing steamy_utilities directory by
-#      PYTHONPATH=`pwd` jupyterlab-lab
-# ii) python/ipython users
-#      PYTHONPATH=`pwd` ipython --pylab
 import steamy_utilities
 
 
@@ -37,7 +31,7 @@ bathy = steamy_utilities.load_bathymetry(bathymetry_file)
 ctd_files = [s for s in sorted(ctd_directory.glob('*.cnv')) if 'yoyo' not in s.name]
 station_ids = numpy.array([s.stem.split('_')[-1] for s in ctd_files], dtype=str)
 
-ctd_casts = steamy_utilities.read_ctd_files(
+_ctd_casts = steamy_utilities.read_ctd_files(
     ctd_files, station_identifiers=station_ids
 )  # to get station positions
 
@@ -62,8 +56,8 @@ _data = _data.assign_coords(
 
 
 # %%
-ctd_times_minutes = ctd_casts.time.values.astype('datetime64[m]')
-ctd_station_names = [f'{nr:03}' for nr in ctd_casts.cast.values]
+ctd_times_minutes = _ctd_casts.time.values.astype('datetime64[m]')
+ctd_station_names = [f'{nr:03}' for nr in _ctd_casts.cast.values]
 
 indices = [
     (_data.index[_ctd_time == _data.time].values, sn)

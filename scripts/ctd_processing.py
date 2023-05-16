@@ -82,7 +82,6 @@ for ct, sa, sigma, lbl in zip(
     sigma.plot(ax=axes[2], y='depth', label=lbl)
 
 axes[0].set_ylim((0, 100))
-axes[0].invert_yaxis()
 axes[0].set_xlim((6.0, 10.0))
 axes[1].set_xlim((29.5, 35.0))
 axes[2].set_xlim((22.5, 27.5))
@@ -116,28 +115,13 @@ for ct, sa, sigma, lbl in zip(
         ax.grid(True)
         ax.set_title(title)
     fig.savefig(output_directory / f'ctd_{lbl}.png', dpi=200)
+    pyplot.close(fig)
 
 
 # %%
-idx = numpy.argmin(numpy.abs((ctd_casts.depth.values - reference_depth)))
-mixed_layer_depths = float('nan') * numpy.ones(ctd_casts.dims['cast'])
-
-for cast_nr in ctd_casts.cast.values:
-    cast = ctd_casts.sel(dict(cast=cast_nr))
-    reference_density = cast.density[idx].values
-    for depth_index in range(idx, ctd_casts.dims['depth']):
-        if abs(reference_density - cast.density[depth_index]) >= mld_threshold:
-            mixed_layer_depths[cast_nr] = cast.depth[depth_index].values
-            break
-
-mixed_layer_depth = xarray.DataArray(
-    mixed_layer_depths,
-    dims=['cast'],
-    coords=dict(cast=ctd_casts.cast),
-    attrs=dict(units='m'),
-    name='mld',
+mixed_layer_depth = steamy_utilities.mixed_layer_depth(
+    ctd_casts, mld_threshold=mld_threshold, reference_depth=reference_depth
 )
-
 
 # %%
 fig, axes = pyplot.subplots(1, 1, figsize=figsize)

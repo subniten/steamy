@@ -1,15 +1,14 @@
 import datetime
 import pathlib
-import warnings
 
 import numpy
 import scipy
 import xarray
 
-from .steamy_common import cumulative_distance
-
-
-# warnings.filterwarnings('ignore')
+from .steamy_common import (
+    cumulative_distance,
+    vertical_gradient,
+)
 
 _nan_int_value = -32768
 
@@ -34,6 +33,9 @@ def read_adcp_file(adcp_file_path):
         def _fix_year(*t):
             return (t[0] + 2000,) + t[1:]
 
+        def _to_utc_from_swedish_summertime_time(*t):
+            return t[:3] + (t[3] - 2,) + t[4:]
+
         time_keys = dict(
             year='SerYear',
             month='SerMon',
@@ -44,7 +46,7 @@ def read_adcp_file(adcp_file_path):
         )
         return numpy.array(
             [
-                datetime.datetime(*(_fix_year(*timestamp)))
+                datetime.datetime(*_to_utc_from_swedish_summertime_time(*(_fix_year(*timestamp))))
                 for timestamp in zip(
                     *[data[_][:, 0].astype(int) for _ in time_keys.values()]
                 )
@@ -110,3 +112,16 @@ def set_bottom_bin_to_nan(_velocity):
         if idx > -1:
             vel[idx] = float('nan')
     return _velocity
+
+
+def shear_squared(_adcp_data):
+    u = _adcp_data.u
+    v = _adcp_data.v
+    
+    du = vertical_gradient(u, z_var='depth')
+    dv = vertical_gradient(v, z_var='depth')
+    
+    _shear = numpy.power(du, 2) + numpy.power(dv, 2)
+    _shear.attrs = dict(units='m$^2$·s$^{-2}$', long_name='S$^2$', short_name='shear_squared')
+    _shear.name = 'S_sq'
+    return _shear

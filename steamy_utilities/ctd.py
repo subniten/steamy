@@ -41,6 +41,27 @@ def get_cast_time_in_cnv_file(cnv_file_path):
         ][0]
 
 
+def mixed_layer_depth(_ctd_casts, *, mld_threshold, reference_depth):
+    idx = numpy.argmin(numpy.abs((_ctd_casts.depth.values - reference_depth)))
+    mixed_layer_depths = float('nan') * numpy.ones(_ctd_casts.dims['cast'])
+    
+    for cast_nr in _ctd_casts.cast.values:
+        cast = _ctd_casts.sel(dict(cast=cast_nr))
+        reference_density = cast.density[idx].values
+        for depth_index in range(idx, _ctd_casts.dims['depth']):
+            if abs(reference_density - cast.density[depth_index]) >= mld_threshold:
+                mixed_layer_depths[cast_nr] = cast.depth[depth_index].values
+                break
+    
+    return xarray.DataArray(
+        mixed_layer_depths,
+        dims=['cast'],
+        coords=dict(cast=_ctd_casts.cast),
+        attrs=dict(units='m', long_name='mld', short_name='mixed_layer_depth'),
+        name='mld',
+    )
+
+
 def read_ctd_files(ctd_files, station_identifiers=None):
     ctd_casts = [ctd.from_cnv(ctd_file) for ctd_file in ctd_files]
     ctd_cast_positions = [get_position_in_cnv_file(ctd_file) for ctd_file in ctd_files]
@@ -111,20 +132,47 @@ def read_ctd_files(ctd_files, station_identifiers=None):
         ),
     )
 
+    rho_name = '$\\rho$'
+    ct_name = '$\\Theta$'
+    sa_name = 'S$_A$'
+    si_name = '$\\sigma_0$'
+    rho_unit = 'kg·m$^{-3}$'
     arrays = dict(
         absolute_salinity=xarray.DataArray(
-            absolute_salinity, attrs=dict(units='g·kg$^{-1}$', name='S$_A$'), **kwargs
+            absolute_salinity,
+            attrs=dict(units='g·kg$^{-1}$', long_name=sa_name),
+            **kwargs,
         ),
         conservative_temperature=xarray.DataArray(
-            conservative_temperature, attrs=dict(units='˚C', name='$\\Theta$'), **kwargs
+            conservative_temperature,
+            attrs=dict(units='˚C', long_name=ct_name),
+            **kwargs,
         ),
         density=xarray.DataArray(
-            density, attrs=dict(units='kg·m$^{-3}$', name='$\\rho$'), **kwargs
+            density, attrs=dict(units=rho_unit, long_name=rho_name), **kwargs
         ),
         sigma_0=xarray.DataArray(
-            sigma_0, attrs=dict(units='kg·m$^{-3}$', name='$\\sigma_0$'), **kwargs
+            sigma_0, attrs=dict(units=rho_unit, long_name=si_name), **kwargs
         ),
         station_name=station_names,
     )
 
     return xarray.Dataset(arrays)
+
+
+def buoyancy_frequency_squared_from_density_profile(sigma_or_rho, *, rho_0, g=9.81, z_var='depth', cut_off_per_m=25.):
+    if sigma_or_rho[z_var][4] > 0:
+        z = -sigma_or_rho[z_var].values
+    else:
+        z = sigma_or_rho[z_var].values
+    _axis = sigma_or_rho.dims.index(z_var)
+    gradient = numpy.gradient(sigma_or_rho.values, z, axis=_axis)
+    gradient = numpy.where(numpy.abs(gradient) < cut_off_per_m, gradient, float('nan'))
+    n_squared = (-1 * g / rho_0) * gradient
+    return xarray.DataArray(
+        n_squared,
+        coords=sigma_or_rho.coords,
+        dims=sigma_or_rho.dims,
+        attrs=dict(units='s$^{-2}$', long_name='N$^2$'),
+        name='buoyancy_freqency_sq'
+    )
