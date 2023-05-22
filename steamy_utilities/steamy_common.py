@@ -105,37 +105,52 @@ def load_bathymetry(bathymetry_file_path):
 def vertical_gradient(array, *, z_var):
     _axis = array.dims.index(z_var)
     _z = numpy.gradient(array, array[z_var], axis=_axis)
-    return xarray.DataArray(
-        _z,
-        dims=array.dims,
-        coords=array.coords
+    return xarray.DataArray(_z, dims=array.dims, coords=array.coords)
+
+
+def downsample_ctd_to_adcp_depths(_ctd, *, _adcp, op):
+    v_bin_half = float(_adcp.depth.diff(dim='depth').median().values) / 2
+
+    depth_first_last = _adcp.isel(dict(depth=[0, -1])).depth.values + numpy.array(
+        [-v_bin_half, v_bin_half]
     )
-
-
-def downsample_ctd_to_adcp_depths(_ctd, *, _adcp):
-    depth_first_last = _ctd.isel(dict(depth=[0, -1])).depth.values
-    depth_indices = _adcp.depth.values < depth_first_last[-1]
-    depths = _adcp.depth.values[depth_indices]
-    depth_selector = dict(depth=depths)
+    depths = _adcp.depth.values
     depth_bins = numpy.concatenate(
         (
             0.9999 * depth_first_last[:1],
             0.5 * (depths[:-1] + depths[1:]),
-            1.0001 * depth_first_last[1:]
+            1.0001 * depth_first_last[1:],
         )
     )
-    ctd_with_adcp_depth_bins = _ctd.groupby_bins('depth', depth_bins).mean(dim='depth')
-    coords = _adcp.sel(depth_selector).coords
+    if 'mean' in op:
+        ctd_with_adcp_depth_bins = _ctd.groupby_bins('depth', depth_bins).mean(
+            dim='depth'
+        )
+    elif 'min' in op:
+        ctd_with_adcp_depth_bins = _ctd.groupby_bins('depth', depth_bins).min(
+            dim='depth'
+        )
+    elif 'max' in op:
+        ctd_with_adcp_depth_bins = _ctd.groupby_bins('depth', depth_bins).max(
+            dim='depth'
+        )
+    else:
+        raise ValueError(f'Unknown op (f{op})')
+    coords = _adcp.coords
     coords['depth'].attrs = dict(units='m')
     if isinstance(ctd_with_adcp_depth_bins, xarray.Dataset):
-        variables = [var for var in ctd_with_adcp_depth_bins.variables if var not in ctd_with_adcp_depth_bins.coords]
+        variables = [
+            var
+            for var in ctd_with_adcp_depth_bins.variables
+            if var not in ctd_with_adcp_depth_bins.coords
+        ]
         arrays = {
-            var: xarray.DataArray(ctd_with_adcp_depth_bins[var].values, dims=['depth'], coords=coords)
+            var: xarray.DataArray(
+                ctd_with_adcp_depth_bins[var].values, dims=['depth'], coords=coords
+            )
             for var in variables
         }
-        return xarray.Dataset(
-            arrays
-        )
+        return xarray.Dataset(arrays)
     return xarray.DataArray(
         ctd_with_adcp_depth_bins.values, dims=['depth'], coords=coords
     )

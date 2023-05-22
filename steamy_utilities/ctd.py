@@ -6,8 +6,11 @@ import ctd
 import gsw
 import matplotlib.pyplot as pyplot
 import numpy
+import pandas
 from scipy.interpolate import griddata
 import xarray
+
+_depth_bin_size = 0.2
 
 
 def get_position_in_cnv_file(cnv_file_path):
@@ -44,7 +47,7 @@ def get_cast_time_in_cnv_file(cnv_file_path):
 def mixed_layer_depth(_ctd_casts, *, mld_threshold, reference_depth):
     idx = numpy.argmin(numpy.abs((_ctd_casts.depth.values - reference_depth)))
     mixed_layer_depths = float('nan') * numpy.ones(_ctd_casts.dims['cast'])
-    
+
     for cast_nr in _ctd_casts.cast.values:
         cast = _ctd_casts.sel(dict(cast=cast_nr))
         reference_density = cast.density[idx].values
@@ -52,7 +55,7 @@ def mixed_layer_depth(_ctd_casts, *, mld_threshold, reference_depth):
             if abs(reference_density - cast.density[depth_index]) >= mld_threshold:
                 mixed_layer_depths[cast_nr] = cast.depth[depth_index].values
                 break
-    
+
     return xarray.DataArray(
         mixed_layer_depths,
         dims=['cast'],
@@ -62,13 +65,13 @@ def mixed_layer_depth(_ctd_casts, *, mld_threshold, reference_depth):
     )
 
 
-def read_ctd_files(ctd_files, station_identifiers=None):
+def read_ctd_files(ctd_files, *, vertical_bin_size, station_identifiers=None):
     ctd_casts = [ctd.from_cnv(ctd_file) for ctd_file in ctd_files]
     ctd_cast_positions = [get_position_in_cnv_file(ctd_file) for ctd_file in ctd_files]
 
     max_depth = max([cast.index.max() for cast in ctd_casts])
 
-    depth = numpy.arange(0, max_depth, 0.2)
+    depth = numpy.arange(0, max_depth, vertical_bin_size)
 
     conservative_temperature = numpy.ndarray([numpy.size(depth), numpy.size(ctd_files)])
     absolute_salinity = numpy.ndarray([numpy.size(depth), numpy.size(ctd_files)])
@@ -160,7 +163,9 @@ def read_ctd_files(ctd_files, station_identifiers=None):
     return xarray.Dataset(arrays)
 
 
-def buoyancy_frequency_squared_from_density_profile(sigma_or_rho, *, rho_0, g=9.81, z_var='depth', cut_off_per_m=25.):
+def buoyancy_frequency_squared_from_density_profile(
+    sigma_or_rho, *, rho_0, g=9.81, z_var='depth', cut_off_per_m=25.0
+):
     if sigma_or_rho[z_var][4] > 0:
         z = -sigma_or_rho[z_var].values
     else:
@@ -174,5 +179,72 @@ def buoyancy_frequency_squared_from_density_profile(sigma_or_rho, *, rho_0, g=9.
         coords=sigma_or_rho.coords,
         dims=sigma_or_rho.dims,
         attrs=dict(units='s$^{-2}$', long_name='N$^2$'),
-        name='buoyancy_freqency_sq'
+        name='buoyancy_freqency_sq',
     )
+
+
+def load_raw_ctd_down_cast(ctd_file_path, sampling_frequency=24):
+    skiprows = 0
+    colum_index = 0
+    column_names = []
+    cnv_name_to_column_name = {
+        'scan': 'scan',
+        'prDM': 'p',
+        't090C': 'temperature',
+        'c0S/m': 'conductivity',
+        'sbeox0V': 'oxygen_raw',
+        'flECO-AFL': 'fluorescence',
+        'upoly0': 'turbidity',
+        'xmiss': 'transmissity',
+        'depSM': 'depth',
+        'sal00': 'salinity',
+        'sbeox0ML/L': 'oxygen_saturation',
+        'flag': 'flag',
+    }
+    cnv_name_to_unit = {
+        'scan': '1',
+        'prDM': 'dbar',
+        't090C': '˚C',
+        'c0S/m': 'S/m',
+        'sbeox0V': 'V',
+        'flECO-AFL': 'mg/m^3',
+        'upoly0': '1',
+        'xmiss': '%',
+        'depSM': 'm',
+        'sal00': 'PSU',
+        'sbeox0ML/L': 'ml/l',
+        'flag': '1',
+    }
+    units = {}
+    with open(ctd_file_path, 'r') as ctd_file:
+        for line in ctd_file:
+            skiprows += 1
+            if f'# name {colum_index}' in line:
+                cnv_name = line.split('=')[1].split(':')[0].strip()
+                name = cnv_name_to_column_name[cnv_name]
+                column_names.append(name)
+                units[name] = cnv_name_to_unit[cnv_name]
+                colum_index += 1
+            if '*END*' in line:
+                break
+    dataset = pandas.read_fwf(
+        ctd_file_path,
+        widths=[
+            11,
+        ]
+        * 12,
+        names=column_names,
+        skiprows=skiprows,
+    ).to_xarray()
+    for cnv_name, unit in units.items():
+        dataset[cnv_name].attrs = dict(units=unit)
+
+    times = dataset.depth.index / sampling_frequency
+    drop_speed = xarray.DataArray(
+        numpy.gradient(dataset.depth, times),
+        dims=dataset.depth.dims,
+        coords=dataset.depth.coords,
+    )
+    dataset['drop_speed'] = drop_speed
+    dataset = dataset.assign_coords(dict(depth=dataset.depth))
+    return dataset
