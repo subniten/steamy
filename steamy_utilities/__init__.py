@@ -18,7 +18,7 @@ from .adcp import (
 )
 from .ctd import (
     buoyancy_frequency_squared_from_density_profile,
-    load_raw_ctd_down_cast,
+    load_ctd_down_cast,
     mixed_layer_depth,
     read_ctd_files,
 )

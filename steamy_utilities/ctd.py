@@ -12,6 +12,47 @@ import xarray
 
 _depth_bin_size = 0.2
 
+_rho_name = '$\\rho$'
+_ct_name = '$\\Theta$'
+_sa_name = 'S$_A$'
+_si_name = '$\\sigma_0$'
+_rho_unit = 'kg·m$^{-3}$'
+
+_cnv_name_to_column_name = {
+    'scan': 'scan',
+    'prDM': 'pressure',
+    'pressure': 'pressure',  # ctd.read_cnv translates column above to pressure
+    't090C': 'temperature',
+    'c0S/m': 'conductivity',
+    'sbeox0V': 'oxygen_raw',
+    'flECO-AFL': 'fluorescence',
+    'upoly0': 'turbidity',
+    'xmiss': 'transmissity',
+    'depSM': 'depth',
+    'sal00': 'salinity',
+    'sbeox0ML/L': 'oxygen_saturation',
+    'flag': 'flag',
+}
+_cnv_name_to_unit = {
+    'scan': '1',
+    'prDM': 'dbar',
+    'pressure': 'dbar',  # ctd.read_cnv translates column above to pressure
+    't090C': '˚C',
+    'c0S/m': 'S/m',
+    'sbeox0V': 'V',
+    'flECO-AFL': 'mg/m^3',
+    'upoly0': '1',
+    'xmiss': '%',
+    'depSM': 'm',
+    'sal00': 'PSU',
+    'sbeox0ML/L': 'ml/l',
+    'flag': '1',
+}
+
+_column_name_to_unit = {
+    _cnv_name_to_column_name[var]: unit for var, unit in _cnv_name_to_unit.items()
+}
+
 
 def get_position_in_cnv_file(cnv_file_path):
     def _parse_position(_line):
@@ -66,12 +107,12 @@ def mixed_layer_depth(_ctd_casts, *, mld_threshold, reference_depth):
 
 
 def read_ctd_files(ctd_files, *, vertical_bin_size, station_identifiers=None):
-    ctd_casts = [ctd.from_cnv(ctd_file) for ctd_file in ctd_files]
+    ctd_casts = [ctd.from_cnv(ctd_file).split()[0] for ctd_file in ctd_files]
     ctd_cast_positions = [get_position_in_cnv_file(ctd_file) for ctd_file in ctd_files]
 
     max_depth = max([cast.index.max() for cast in ctd_casts])
 
-    depth = numpy.arange(0, max_depth, vertical_bin_size)
+    depth = numpy.arange(0, max_depth + vertical_bin_size, vertical_bin_size)
 
     conservative_temperature = numpy.ndarray([numpy.size(depth), numpy.size(ctd_files)])
     absolute_salinity = numpy.ndarray([numpy.size(depth), numpy.size(ctd_files)])
@@ -135,27 +176,22 @@ def read_ctd_files(ctd_files, *, vertical_bin_size, station_identifiers=None):
         ),
     )
 
-    rho_name = '$\\rho$'
-    ct_name = '$\\Theta$'
-    sa_name = 'S$_A$'
-    si_name = '$\\sigma_0$'
-    rho_unit = 'kg·m$^{-3}$'
     arrays = dict(
         absolute_salinity=xarray.DataArray(
             absolute_salinity,
-            attrs=dict(units='g·kg$^{-1}$', long_name=sa_name),
+            attrs=dict(units='g·kg$^{-1}$', long_name=_sa_name),
             **kwargs,
         ),
         conservative_temperature=xarray.DataArray(
             conservative_temperature,
-            attrs=dict(units='˚C', long_name=ct_name),
+            attrs=dict(units='˚C', long_name=_ct_name),
             **kwargs,
         ),
         density=xarray.DataArray(
-            density, attrs=dict(units=rho_unit, long_name=rho_name), **kwargs
+            density, attrs=dict(units=_rho_unit, long_name=_rho_name), **kwargs
         ),
         sigma_0=xarray.DataArray(
-            sigma_0, attrs=dict(units=rho_unit, long_name=si_name), **kwargs
+            sigma_0, attrs=dict(units=_rho_unit, long_name=_si_name), **kwargs
         ),
         station_name=station_names,
     )
@@ -183,47 +219,77 @@ def buoyancy_frequency_squared_from_density_profile(
     )
 
 
+def load_ctd_down_cast(ctd_file_path, sampling_frequency=24):
+    def get_sampling_frequency():
+        with open(ctd_file_path, 'r') as _ctd_file:
+            for line in _ctd_file:
+                if '# interval = seconds: ' in line:
+                    _ts = float(line.split(':')[1].strip())
+                    _fs = 1 / _ts
+                    return _ts, _fs
+            return 1 / sampling_frequency, sampling_frequency
+
+    def _renamer(_dataframe):
+        return _dataframe.rename_axis(index={'Pressure [dbar]': 'pressure'})
+
+    _sampling_interval, _sampling_frequency = get_sampling_frequency()
+
+    down_cast, _ = [
+        _cast.to_xarray() for _cast in _renamer(ctd.from_cnv(ctd_file_path)).split()
+    ]
+
+    variables = [var for var in down_cast.variables]
+
+    for var in variables:
+        down_cast[var].attrs = dict(units=_cnv_name_to_unit[var])
+
+    arrays = {_cnv_name_to_column_name[var]: down_cast[var] for var in variables}
+    dims = ['scan']
+    arrays['scan'] = xarray.DataArray(
+        down_cast.scan.astype(int).values,
+        dims=dims,
+        coords=dict(scan=down_cast.scan.values),
+        attrs=dict(units='1', long_name='scan', short_name='scan'),
+    )
+    coords = dict(scan=arrays['scan'])
+    for var in [_var for _var in arrays.keys() if 'scan' not in _var]:
+        arrays[var] = xarray.DataArray(arrays[var].values, dims=dims, coords=coords)
+
+    dataset = xarray.Dataset(arrays)
+    for var in [_var for _var in dataset.variables if _var not in dataset.coords]:
+        dataset[var].attrs = dict(units=_column_name_to_unit[var])
+    dataset['time'] = xarray.DataArray(
+        (arrays['scan'].values - 1) * _sampling_interval,
+        dims=dims,
+        coords=coords,
+        attrs=dict(units='s', long_name='time', short_name='t'),
+    )
+
+    dataset = dataset.assign_coords(
+        dict(depth=dataset.depth, pressure=dataset.pressure, time=dataset.time)
+    )
+
+    return dataset
+
+
+def calculate_cast_drop_speed(cast):
+    _min, _max = cast.depth.values.sort()[[0, -1]]
+    bins = numpy.arange(max(0, int(numpy.floor(_min))), int(numpy.ceil(_max)) + 1)
+
+
 def load_raw_ctd_down_cast(ctd_file_path, sampling_frequency=24):
     skiprows = 0
     colum_index = 0
     column_names = []
-    cnv_name_to_column_name = {
-        'scan': 'scan',
-        'prDM': 'p',
-        't090C': 'temperature',
-        'c0S/m': 'conductivity',
-        'sbeox0V': 'oxygen_raw',
-        'flECO-AFL': 'fluorescence',
-        'upoly0': 'turbidity',
-        'xmiss': 'transmissity',
-        'depSM': 'depth',
-        'sal00': 'salinity',
-        'sbeox0ML/L': 'oxygen_saturation',
-        'flag': 'flag',
-    }
-    cnv_name_to_unit = {
-        'scan': '1',
-        'prDM': 'dbar',
-        't090C': '˚C',
-        'c0S/m': 'S/m',
-        'sbeox0V': 'V',
-        'flECO-AFL': 'mg/m^3',
-        'upoly0': '1',
-        'xmiss': '%',
-        'depSM': 'm',
-        'sal00': 'PSU',
-        'sbeox0ML/L': 'ml/l',
-        'flag': '1',
-    }
     units = {}
     with open(ctd_file_path, 'r') as ctd_file:
         for line in ctd_file:
             skiprows += 1
             if f'# name {colum_index}' in line:
                 cnv_name = line.split('=')[1].split(':')[0].strip()
-                name = cnv_name_to_column_name[cnv_name]
+                name = _cnv_name_to_column_name[cnv_name]
                 column_names.append(name)
-                units[name] = cnv_name_to_unit[cnv_name]
+                units[name] = _cnv_name_to_unit[cnv_name]
                 colum_index += 1
             if '*END*' in line:
                 break
@@ -240,11 +306,6 @@ def load_raw_ctd_down_cast(ctd_file_path, sampling_frequency=24):
         dataset[cnv_name].attrs = dict(units=unit)
 
     times = dataset.depth.index / sampling_frequency
-    drop_speed = xarray.DataArray(
-        numpy.gradient(dataset.depth, times),
-        dims=dataset.depth.dims,
-        coords=dataset.depth.coords,
-    )
-    dataset['drop_speed'] = drop_speed
-    dataset = dataset.assign_coords(dict(depth=dataset.depth))
+    dataset = dataset.assign_coords(dict(depth=dataset.depth, time=times))
+
     return dataset
