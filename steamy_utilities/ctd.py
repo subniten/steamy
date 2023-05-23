@@ -272,11 +272,6 @@ def load_ctd_down_cast(ctd_file_path, sampling_frequency=24):
     return dataset
 
 
-def calculate_cast_drop_speed(cast):
-    _min, _max = cast.depth.values.sort()[[0, -1]]
-    bins = numpy.arange(max(0, int(numpy.floor(_min))), int(numpy.ceil(_max)) + 1)
-
-
 def load_raw_ctd_down_cast(ctd_file_path, sampling_frequency=24):
     skiprows = 0
     colum_index = 0
